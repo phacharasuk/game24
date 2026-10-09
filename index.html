@@ -1,0 +1,1294 @@
+<!doctype html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>สุ่มเลขเกม 24</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=IBM+Plex+Sans+Thai:wght@400;600&display=swap">
+<style>
+  /* Layout: card table — one felt surface, a dealt row of 4 cards, deal + answer buttons, rule switches below */
+  :root {
+    --felt: #1f4d3a;
+    --felt-deep: #173c2d;
+    --felt-line: #2f6a52;
+    --card: #fbf8f1;
+    --card-ink: #1d2a24;
+    --text: #eef3ee;
+    --muted: #a9c3b5;
+    --brass: #e0b453;
+    --brass-ink: #2b2208;
+    --brass-shadow: #a07b2a;
+    --warn: #ffb4a6;
+    --font-num: "DM Serif Display", Georgia, "Times New Roman", serif;
+    --font-body: "IBM Plex Sans Thai", "Leelawadee UI", "Thonburi", "Noto Sans Thai", system-ui, sans-serif;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  [hidden] { display: none !important; } /* .answer sets display:grid, which would otherwise beat the hidden attribute */
+  body {
+    margin: 0;
+    background: radial-gradient(120% 80% at 50% 0%, var(--felt) 0%, var(--felt-deep) 100%) fixed, var(--felt-deep);
+    color: var(--text);
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: 1.55;
+    min-height: 100%;
+  }
+  .wrap {
+    max-width: 560px;
+    margin: 0 auto;
+    padding-inline: 16px;
+    padding-block: 20px 32px;
+    display: grid;
+    gap: 20px;
+  }
+  h1 {
+    margin: 0; font-family: var(--font-num); font-weight: 400; font-size: 34px; line-height: 1.1;
+  }
+  h1 .target { color: var(--brass); }
+
+  /* the dealt hand */
+  .hand {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
+  }
+  .card {
+    aspect-ratio: 5 / 7;
+    max-width: 100%;
+    background: var(--card);
+    color: var(--card-ink);
+    border-radius: 10px;
+    box-shadow: 0 1px 0 rgba(255,255,255,.6) inset, 0 6px 14px rgba(0,0,0,.35);
+    display: grid; place-items: center;
+  }
+  .card .num {
+    font-family: var(--font-num); font-size: clamp(40px, 13vw, 64px); line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .card.deal { animation: deal .32s cubic-bezier(.2,.8,.3,1) both; }
+  .card:nth-child(2).deal { animation-delay: .05s; }
+  .card:nth-child(3).deal { animation-delay: .10s; }
+  .card:nth-child(4).deal { animation-delay: .15s; }
+  @keyframes deal {
+    from { transform: translateY(-14px) rotate(-4deg); opacity: .4; }
+    to { transform: none; opacity: 1; }
+  }
+  @media (prefers-reduced-motion: reduce) { .card.deal { animation: none; } }
+
+  .answer {
+    margin: 0; padding: 12px 14px; border-radius: 10px;
+    border: 1px dashed var(--brass); color: var(--text);
+    display: grid; gap: 8px;
+  }
+  .answer .count { font-size: 13px; color: var(--muted); }
+  .answer ol {
+    margin: 0; padding-left: 2.2em; display: grid; gap: 4px;
+    font-family: var(--font-num); font-size: 21px; line-height: 1.35;
+  }
+  .answer li { overflow-wrap: anywhere; }
+  .answer li::marker { font-family: var(--font-body); font-size: 13px; color: var(--muted); }
+  .answer.none { font-size: 15px; color: var(--warn); border-color: var(--warn); }
+
+  .actions { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 10px; }
+  .btn {
+    appearance: none; cursor: pointer; width: 100%; padding: 16px 10px; border-radius: 12px;
+    font-family: var(--font-body); font-weight: 600; touch-action: manipulation;
+  }
+  .btn-answer {
+    background: transparent; color: var(--brass); border: 2px solid var(--brass); font-size: 17px;
+  }
+  .btn-deal {
+    border: 0; background: var(--brass); color: var(--brass-ink); font-size: 20px;
+    box-shadow: 0 4px 0 var(--brass-shadow);
+  }
+  .btn-deal:active { transform: translateY(2px); box-shadow: 0 2px 0 var(--brass-shadow); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+  .btn:focus-visible, input:focus-visible { outline: 3px solid var(--text); outline-offset: 2px; }
+  .kbd-hint { margin: -10px 0 0; text-align: center; font-size: 12px; color: var(--muted); }
+
+  /* rules */
+  .rules {
+    border-top: 1px solid var(--felt-line);
+    padding-top: 16px;
+    display: grid; gap: 14px;
+  }
+  .rules h2 { margin: 0; font-size: 13px; letter-spacing: .1em; color: var(--muted); font-weight: 600; }
+  .rule {
+    display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 12px; align-items: start;
+  }
+  .rule input[type="checkbox"] { width: 22px; height: 22px; margin: 2px 0 0; accent-color: var(--brass); }
+  .rule label { font-weight: 600; cursor: pointer; }
+  .rule .sub { grid-column: 2; font-size: 13px; color: var(--muted); }
+  .rule.base .dot {
+    width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--muted); margin-top: 2px;
+    display: grid; place-items: center;
+  }
+  .rule.base .dot::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--muted); }
+  .rule.base.off { opacity: .45; }
+  .rule.base.off .dot::after { background: transparent; }
+  .range-row {
+    grid-column: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 4px;
+  }
+  .range-row.off { opacity: .45; }
+  .range-row input[type="number"] {
+    width: 84px; padding: 8px 10px; border-radius: 8px;
+    border: 1px solid var(--felt-line); background: var(--felt-deep); color: var(--text);
+    font-family: var(--font-body); font-size: 16px; font-variant-numeric: tabular-nums;
+  }
+  .range-row input:disabled { cursor: not-allowed; }
+  .range-row input[aria-invalid="true"] { border-color: var(--warn); }
+  .error { grid-column: 2; color: var(--warn); font-size: 13px; }
+  .now { margin: 0; font-size: 13px; color: var(--muted); }
+  .now b { color: var(--text); font-weight: 600; }
+
+  /* screens */
+  .screen, .tstate { display: grid; gap: 20px; }
+  .lead { margin: -8px 0 0; color: var(--muted); }
+  .modes { display: grid; gap: 12px; }
+  .mode {
+    appearance: none; cursor: pointer; text-align: left; width: 100%;
+    display: grid; gap: 4px; padding: 18px 18px;
+    background: var(--card); color: var(--card-ink); border: 0; border-radius: 12px;
+    box-shadow: 0 6px 14px rgba(0,0,0,.35);
+    font-family: var(--font-body); touch-action: manipulation;
+  }
+  .mode-name { font-family: var(--font-num); font-size: 28px; line-height: 1.1; }
+  .mode-desc { font-size: 14px; color: var(--felt-line); }
+  .mode:active { transform: translateY(2px); }
+  .topbar { display: grid; gap: 2px; }
+  .back {
+    appearance: none; border: 0; background: none; padding: 4px 0; justify-self: start; cursor: pointer;
+    color: var(--muted); font-family: var(--font-body); font-size: 14px;
+  }
+  .mode-title { font-size: 30px; }
+  .actions.even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .btn:focus-visible, .mode:focus-visible, .back:focus-visible, .seg button:focus-visible, .stop:focus-visible {
+    outline: 3px solid var(--text); outline-offset: 2px;
+  }
+
+  .field { display: grid; gap: 8px; }
+  .field-label { font-size: 13px; letter-spacing: .1em; color: var(--muted); font-weight: 600; }
+  .seg { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+  .seg button {
+    appearance: none; cursor: pointer; padding: 12px 0; border-radius: 10px;
+    border: 2px solid var(--felt-line); background: transparent; color: var(--text);
+    font-family: var(--font-num); font-size: 24px; line-height: 1; touch-action: manipulation;
+  }
+  .seg button[aria-pressed="true"] { background: var(--brass); border-color: var(--brass); color: var(--brass-ink); }
+
+  .scoreline { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .clock { font-family: var(--font-num); font-size: 52px; line-height: 1; font-variant-numeric: tabular-nums; }
+  .clock.warn { color: var(--warn); }
+  .tally { font-size: 15px; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .stop {
+    appearance: none; border: 0; background: none; cursor: pointer; justify-self: center;
+    color: var(--muted); font-family: var(--font-body); font-size: 14px; text-decoration: underline; padding: 6px 12px;
+  }
+
+  .game-group { display: grid; gap: 12px; }
+  .hand.five { grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+  .hand.five .num { font-size: clamp(32px, 10vw, 56px); }
+  .goal { display: flex; align-items: baseline; justify-content: center; gap: 12px; }
+  .goal-label { font-size: 14px; color: var(--muted); }
+  .goal-num {
+    font-family: var(--font-num); font-size: 64px; line-height: 1; color: var(--brass);
+    font-variant-numeric: tabular-nums;
+  }
+  .seg.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .seg.two button { font-family: var(--font-body); font-size: 17px; font-weight: 600; }
+  .answer .expr { font-family: var(--font-num); font-size: 21px; line-height: 1.5; overflow-wrap: anywhere; }
+  .answer sup { font-size: .62em; }
+  .answer .note { font-size: 14px; color: var(--muted); }
+  .answer .note b { color: var(--text); }
+
+  .calc { display: grid; gap: 16px; }
+  .calc-nums { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+  .calc-nums.four { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .calc-nums input, .calc-target {
+    width: 100%; min-width: 0; padding: 12px 4px; border-radius: 10px;
+    border: 2px solid var(--felt-line); background: var(--card); color: var(--card-ink);
+    font-family: var(--font-num); font-size: 30px; line-height: 1; text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .calc-target { width: 7.5em; justify-self: start; color: var(--brass-ink); }
+  .calc-nums input[aria-invalid="true"], .calc-target[aria-invalid="true"] { border-color: var(--warn); }
+  .calc-nums input:focus-visible, .calc-target:focus-visible { outline: 3px solid var(--brass); outline-offset: 1px; }
+  .seg.two button[data-game] { font-family: var(--font-body); }
+  .ops { margin: 0; padding: 0; border: 0; display: grid; gap: 10px; min-width: 0; }
+  .ops legend { padding: 0; margin-bottom: 8px; }
+  .op { display: flex; align-items: center; gap: 10px; cursor: pointer; }
+  .op input { width: 22px; height: 22px; margin: 0; accent-color: var(--brass); flex: none; }
+  .op:has(input:disabled) { cursor: default; }
+  .calc .error { grid-column: auto; margin: 0; } /* .error is placed in column 2 inside the rule rows; here it spans the form */
+
+  .end-title { margin: 0; font-family: var(--font-num); font-size: 30px; color: var(--brass); }
+  .summary { margin: 0; display: grid; gap: 10px; }
+  .summary div {
+    display: flex; justify-content: space-between; align-items: baseline; gap: 12px;
+    padding-bottom: 10px; border-bottom: 1px solid var(--felt-line);
+  }
+  .summary dt { color: var(--muted); }
+  .summary dd { margin: 0; }
+  .summary b { font-family: var(--font-num); font-size: 34px; font-weight: 400; font-variant-numeric: tabular-nums; }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- screen 1: choose a mode -->
+  <main class="screen" id="scrHome">
+    <p class="lead">เลือกเกมและโหมด</p>
+    <section class="game-group" aria-labelledby="g24">
+      <h1 id="g24">Game <span class="target">24</span></h1>
+      <div class="modes">
+        <button class="mode" type="button" id="goBasic">
+          <span class="mode-name">Basic play</span>
+          <span class="mode-desc">สุ่มเลขทีละชุด คิดได้เมื่อไหร่ค่อยสุ่มใหม่ ดูเฉลยได้</span>
+        </button>
+        <button class="mode" type="button" id="goTime">
+          <span class="mode-name">Time challenge</span>
+          <span class="mode-desc">จับเวลา 1–5 นาที ทำให้ได้มากที่สุด</span>
+        </button>
+      </div>
+    </section>
+    <section class="game-group" aria-labelledby="g180">
+      <h1 id="g180"><span class="target">180</span> IQ</h1>
+      <div class="modes">
+        <button class="mode" type="button" id="goIQ">
+          <span class="mode-name">Basic play</span>
+          <span class="mode-desc">เลข 5 ตัว ทำให้ได้คำตอบ 2 หรือ 3 หลัก ใช้ ^ ราก ! Σ ได้</span>
+        </button>
+      </div>
+    </section>
+    <section class="game-group" aria-labelledby="gCalc">
+      <h1 id="gCalc">Solver</h1>
+      <div class="modes">
+        <button class="mode" type="button" id="goCalc">
+          <span class="mode-name">Solver</span>
+          <span class="mode-desc">กรอกเลขเอง ให้โปรแกรมหาวิธี</span>
+        </button>
+      </div>
+    </section>
+  </main>
+
+  <!-- screen 5: calculator -->
+  <main class="screen" id="scrCalc" hidden>
+    <div class="topbar">
+      <button class="back" type="button" data-home>‹ หน้าแรก</button>
+      <h1 class="mode-title">Solver</h1>
+    </div>
+
+    <div class="seg two" role="group" aria-label="เลือกเกม" id="calcGameSeg">
+      <button type="button" data-game="24">Game 24</button>
+      <button type="button" data-game="180">180 IQ</button>
+    </div>
+
+    <form class="calc" id="calcForm" novalidate>
+      <div class="field">
+        <span class="field-label" id="calcNumsLabel">ตัวเลข (0–99)</span>
+        <div class="calc-nums" id="calcNums" role="group" aria-labelledby="calcNumsLabel">
+          <input id="calcN0" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="ตัวเลขช่องที่ 1">
+          <input id="calcN1" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="ตัวเลขช่องที่ 2">
+          <input id="calcN2" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="ตัวเลขช่องที่ 3">
+          <input id="calcN3" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="ตัวเลขช่องที่ 4">
+          <input id="calcN4" type="text" inputmode="numeric" maxlength="2" autocomplete="off" aria-label="ตัวเลขช่องที่ 5">
+        </div>
+      </div>
+      <div class="field" id="calcTargetField">
+        <label class="field-label" for="calcTarget">คำตอบ (1–999)</label>
+        <input class="calc-target" id="calcTarget" type="text" inputmode="numeric" maxlength="3" autocomplete="off">
+      </div>
+      <fieldset class="ops" id="calcOpsField">
+        <legend class="field-label">เครื่องหมายที่ใช้ได้</legend>
+        <label class="op"><input type="checkbox" id="opBasic" checked disabled> + − × ÷ ( )</label>
+        <label class="op"><input type="checkbox" id="opFact" checked> แฟกทอเรียล ( ! )</label>
+        <label class="op"><input type="checkbox" id="opSum" checked> ผลรวม ( Σn และ Σ a→b )</label>
+        <label class="op"><input type="checkbox" id="opPow" checked> ยกกำลัง</label>
+        <label class="op"><input type="checkbox" id="opRoot" checked> ราก ( √ และราก n )</label>
+      </fieldset>
+      <p class="error" id="calcError" hidden></p>
+      <div class="actions">
+        <button class="btn btn-answer" id="calcClear" type="button">ล้าง</button>
+        <button class="btn btn-deal" id="calcGo" type="submit">หาวิธี</button>
+      </div>
+    </form>
+
+    <div class="answer" id="calcAnswer" hidden></div>
+    <p class="now" id="calcRules"></p>
+  </main>
+
+  <!-- screen 4: 180 IQ basic play -->
+  <main class="screen" id="scrIQ" hidden>
+    <div class="topbar">
+      <button class="back" type="button" data-home>‹ หน้าแรก</button>
+      <h1 class="mode-title">180 IQ · Basic play</h1>
+    </div>
+
+    <div class="goal">
+      <span class="goal-label">คำตอบ</span>
+      <span class="goal-num" id="iqTarget">–</span>
+    </div>
+    <div class="hand five" id="iqHand" aria-live="polite"></div>
+
+    <div class="actions">
+      <button class="btn btn-answer" id="iqAnswerBtn" type="button">ดูเฉลย</button>
+      <button class="btn btn-deal" id="iqDealBtn" type="button">สุ่มเลข</button>
+    </div>
+    <p class="kbd-hint">บนคอมกด Space หรือ Enter เพื่อสุ่มได้</p>
+
+    <div class="answer" id="iqAnswer" hidden></div>
+
+    <section class="rules" aria-labelledby="iqRulesTitle">
+      <h2 id="iqRulesTitle">กติกา</h2>
+      <div class="field">
+        <span class="field-label" id="digitLabel">คำตอบ</span>
+        <div class="seg two" role="group" aria-labelledby="digitLabel" id="digitSeg">
+          <button type="button" data-digits="2">2 หลัก</button>
+          <button type="button" data-digits="3">3 หลัก</button>
+        </div>
+      </div>
+      <p class="now">เลข 1–9 ห้าตัว ซ้ำได้ไม่เกิน 1 คู่ · ใช้ทุกตัว ตัวละครั้ง</p>
+      <p class="now">ใช้ได้: + − × ÷ · ยกกำลัง · ราก (√ และราก n) · ! · Σn (1 ถึง n) · Σ(a→b)</p>
+      <p class="now">คำตอบต้องเป็นจำนวนเต็ม · ถ้าไม่มีวิธีได้พอดี คนที่ได้ใกล้สุดชนะ</p>
+    </section>
+  </main>
+
+  <!-- screen 2: basic play -->
+  <main class="screen" id="scrBasic" hidden>
+    <div class="topbar">
+      <button class="back" type="button" data-home>‹ หน้าแรก</button>
+      <h1 class="mode-title">Basic play</h1>
+    </div>
+
+    <section aria-label="เลขที่สุ่มได้">
+      <div class="hand" id="hand" aria-live="polite"></div>
+    </section>
+
+    <div class="actions">
+      <button class="btn btn-answer" id="answerBtn" type="button">ดูเฉลย</button>
+      <button class="btn btn-deal" id="dealBtn" type="button">สุ่มเลข</button>
+    </div>
+    <p class="kbd-hint">บนคอมกด Space หรือ Enter เพื่อสุ่มได้</p>
+
+    <div class="answer" id="answer" hidden></div>
+
+    <div class="rules-slot" id="basicRulesSlot"></div>
+  </main>
+
+  <!-- screen 3: time challenge -->
+  <main class="screen" id="scrTime" hidden>
+    <div class="topbar" id="timeTopbar">
+      <button class="back" type="button" data-home>‹ หน้าแรก</button>
+      <h1 class="mode-title">Time challenge</h1>
+    </div>
+
+    <!-- 3a: before start -->
+    <div class="tstate" id="tSetup">
+      <div class="field">
+        <span class="field-label" id="minLabel">เวลา (นาที)</span>
+        <div class="seg" role="group" aria-labelledby="minLabel" id="minSeg">
+          <button type="button" data-min="1">1</button>
+          <button type="button" data-min="2">2</button>
+          <button type="button" data-min="3">3</button>
+          <button type="button" data-min="4">4</button>
+          <button type="button" data-min="5">5</button>
+        </div>
+        <p class="now" id="bestLine"></p>
+      </div>
+      <button class="btn btn-deal" id="startBtn" type="button">เริ่ม</button>
+      <div class="rules-slot" id="timeRulesSlot"></div>
+    </div>
+
+    <!-- 3b: running -->
+    <div class="tstate" id="tRun" hidden>
+      <div class="scoreline">
+        <span class="clock" id="clock" aria-live="off">2:00</span>
+        <span class="tally" id="tally">Done 0 · Skip 0</span>
+      </div>
+      <div class="hand" id="tHand"></div>
+      <div class="actions even">
+        <button class="btn btn-answer" id="skipBtn" type="button">Skip</button>
+        <button class="btn btn-deal" id="doneBtn" type="button">Done</button>
+      </div>
+      <button class="stop" id="stopBtn" type="button">หยุด</button>
+    </div>
+
+    <!-- 3c: summary -->
+    <div class="tstate" id="tEnd" hidden>
+      <p class="end-title" id="endTitle">หมดเวลา</p>
+      <dl class="summary">
+        <div><dt>คิดได้</dt><dd><b id="sumDone">0</b> ข้อ</dd></div>
+        <div><dt>ข้าม</dt><dd><b id="sumSkip">0</b> ข้อ</dd></div>
+        <div><dt id="sumBestLabel">คะแนนสูงสุด</dt><dd><b id="sumBest">0</b> ข้อ</dd></div>
+      </dl>
+      <div class="actions even">
+        <button class="btn btn-answer" type="button" data-home>หน้าแรก</button>
+        <button class="btn btn-deal" id="againBtn" type="button">เล่นอีกรอบ</button>
+      </div>
+    </div>
+  </main>
+
+  <section class="rules" id="rulesPanel" aria-labelledby="rulesTitle">
+    <h2 id="rulesTitle">กติกาการสุ่ม</h2>
+
+    <div class="rule base" id="baseRule">
+      <span class="dot" aria-hidden="true"></span>
+      <span>เลขไม่ซ้ำกันเลย</span>
+      <span class="sub">ค่าเริ่มต้น ใช้เมื่อไม่ได้ติ๊กข้อข้างล่าง</span>
+    </div>
+
+    <div class="rule">
+      <input type="checkbox" id="optPair">
+      <label for="optPair">ซ้ำได้ไม่เกิน 1 คู่</label>
+      <span class="sub">เช่น 3 3 7 8 ได้ · 3 3 7 7 หรือ 3 3 3 8 ไม่ได้ · ไม่บังคับว่าต้องซ้ำ</span>
+    </div>
+
+    <div class="rule">
+      <input type="checkbox" id="optRange">
+      <label for="optRange">ใช้เลขเกิน 9</label>
+      <span class="sub">สุ่มตั้งแต่ 1 ถึงเลขที่กำหนด</span>
+      <div class="range-row" id="rangeRow">
+        <label for="maxNum">สุ่มถึงเลข</label>
+        <input type="number" id="maxNum" inputmode="numeric" min="4" max="99" step="1" value="13">
+        <span class="sub" style="grid-column:auto">(4–99)</span>
+      </div>
+      <span class="error" id="rangeError" hidden></span>
+    </div>
+
+    <p class="now" id="nowLine"></p>
+    <p class="now">ทุกชุดที่สุ่มได้ทำ 24 ได้แน่นอน</p>
+  </section>
+</div>
+
+<script>
+/* ---------- pure logic (tested separately) ---------- */
+function randInt(n) { // uniform integer 0..n-1
+  if (window.crypto && crypto.getRandomValues) {
+    const buf = new Uint32Array(1);
+    const limit = Math.floor(0x100000000 / n) * n;
+    do { crypto.getRandomValues(buf); } while (buf[0] >= limit);
+    return buf[0] % n;
+  }
+  return Math.floor(Math.random() * n);
+}
+
+// true when the 4 numbers satisfy the repeat rule
+function isAllowed(nums, allowPair) {
+  const counts = {};
+  for (const x of nums) counts[x] = (counts[x] || 0) + 1;
+  const c = Object.values(counts);
+  if (!allowPair) return c.every(k => k === 1);
+  return c.every(k => k <= 2) && c.filter(k => k === 2).length <= 1;
+}
+
+// exact fractions (BigInt) so answers like 8 ÷ (3 − 8 ÷ 3) are found without rounding
+function gcd(a, b) { a = a < 0n ? -a : a; b = b < 0n ? -b : b; while (b) [a, b] = [b, a % b]; return a; }
+function frac(n, d) {
+  if (d < 0n) { n = -n; d = -d; }
+  const g = gcd(n, d) || 1n;
+  return { n: n / g, d: d / g };
+}
+// prec: 3 = number, 2 = × ÷, 1 = + −
+function wrap(node, need) { return node.prec < need ? "(" + node.s + ")" : node.s; }
+// subtraction is always bigger − smaller, so no step goes negative;
+// with intOnly, division must come out whole (answers players can do in their head)
+function combine(a, b, intOnly) {
+  const [hi, lo] = a.v.n * b.v.d >= b.v.n * a.v.d ? [a, b] : [b, a];
+  const out = [
+    { v: frac(a.v.n * b.v.d + b.v.n * a.v.d, a.v.d * b.v.d), s: a.s + " + " + b.s, prec: 1 },
+    { v: frac(hi.v.n * lo.v.d - lo.v.n * hi.v.d, hi.v.d * lo.v.d), s: hi.s + " − " + wrap(lo, 2), prec: 1 },
+    { v: frac(a.v.n * b.v.n, a.v.d * b.v.d), s: wrap(a, 2) + " × " + wrap(b, 2), prec: 2 },
+  ];
+  for (const [x, y] of [[a, b], [b, a]]) {
+    if (y.v.n === 0n) continue;
+    const q = frac(x.v.n * y.v.d, x.v.d * y.v.n);
+    if (intOnly && q.d !== 1n) continue;
+    out.push({ v: q, s: wrap(x, 2) + " ÷ " + wrap(y, 3), prec: 2 });
+  }
+  return out;
+}
+function search(nodes, intOnly) {
+  if (nodes.length === 1) {
+    const v = nodes[0].v;
+    return v.d === 1n && v.n === 24n ? nodes[0].s : null;
+  }
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const rest = nodes.filter((_, k) => k !== i && k !== j);
+      for (const c of combine(nodes[i], nodes[j], intOnly)) {
+        const found = search(rest.concat([c]), intOnly);
+        if (found) return found;
+      }
+    }
+  }
+  return null;
+}
+// returns one expression that makes 24 (whole-number steps preferred), or null
+function solve24(nums) {
+  const leaves = nums.map(x => ({ v: { n: BigInt(x), d: 1n }, s: String(x), prec: 3 }));
+  return search(leaves, true) || search(leaves, false);
+}
+
+/* ---------- all distinct answers ----------
+   Every expression tree is tried. Two answers count as the same when they differ only by
+   swapping order (4 × 6 = 6 × 4) or regrouping (a − (b − c) = a + c − b):
+   each tree is flattened into a sum of signed terms or a product of factors over divisors. */
+function fracSub(a, b) { return frac(a.n * b.d - b.n * a.d, a.d * b.d); }
+function fracNum(f) { return Number(f.n) / Number(f.d); }
+function termsOf(t, sign) {
+  return t.k === "s" ? t.items.map(it => ({ sign: it.sign * sign, t: it.t })) : [{ sign, t }];
+}
+function facsOf(t, pow) {
+  return t.k === "p" ? t.items.map(it => ({ pow: it.pow * pow, t: it.t })) : [{ pow, t }];
+}
+function keyOf(t) {
+  if (t.k === "n") return String(t.x);
+  const parts = t.items.map(it => (t.k === "s" ? (it.sign > 0 ? "+" : "-") : (it.pow > 0 ? "*" : "/")) + keyOf(it.t));
+  return t.k + "(" + parts.sort().join(",") + ")";
+}
+function showOf(t) {
+  if (t.k === "n") return String(t.x);
+  const byVal = (p, q) => q.t.val - p.t.val || (keyOf(p.t) < keyOf(q.t) ? -1 : 1);
+  if (t.k === "s") {
+    const pos = t.items.filter(it => it.sign > 0).sort(byVal).map(it => showOf(it.t));
+    const neg = t.items.filter(it => it.sign < 0).sort(byVal).map(it => showOf(it.t));
+    return pos.join(" + ") + neg.map(s => " − " + s).join("");
+  }
+  const par = it => (it.t.k === "s" ? "(" + showOf(it.t) + ")" : showOf(it.t));
+  const num = t.items.filter(it => it.pow > 0).sort(byVal).map(par);
+  const den = t.items.filter(it => it.pow < 0).sort(byVal).map(par);
+  return num.join(" × ") + den.map(s => " ÷ " + s).join("");
+}
+// Merge look-alike answers: every bracket is turned positive (so (5 − 9) × (2 − 8) becomes
+// (9 − 5) × (8 − 2)) and ÷ 1 counts as × 1. Returns the rewritten tree and the sign taken out.
+function normalize(t) {
+  if (t.k === "n") return { t, sign: 1 };
+  if (t.k === "p") {
+    let sign = 1;
+    const items = t.items.map(it => {
+      const r = normalize(it.t);
+      sign *= r.sign;
+      const one = r.t.k === "n" && r.t.x === 1;
+      return { pow: one ? 1 : it.pow, t: r.t };
+    });
+    return { t: { k: "p", items, val: Math.abs(t.val) }, sign };
+  }
+  let items = t.items.map(it => {
+    const r = normalize(it.t);
+    return { sign: it.sign * r.sign, t: r.t };
+  });
+  const flipped = items.map(it => ({ sign: -it.sign, t: it.t }));
+  let sign = 1;
+  if (t.val < 0) { items = flipped; sign = -1; }
+  else if (t.val === 0 && keyOf({ k: "s", items: flipped }) < keyOf({ k: "s", items })) items = flipped;
+  return { t: { k: "s", items, val: Math.abs(t.val) }, sign };
+}
+// Key without "× 1": answers that differ only in where × 1 sits count as one
+// (6 × 5 × 1 − 6 = 6 × 5 − 6 × 1 = (6 × 5 − 6) × 1).
+function stripOnes(t) {
+  if (t.k === "n") return t;
+  if (t.k === "p") {
+    const items = t.items.map(it => ({ pow: it.pow, t: stripOnes(it.t) }))
+      .filter(it => !(it.t.k === "n" && it.t.x === 1));
+    if (items.length === 0) return { k: "n", x: 1 };
+    if (items.length === 1 && items[0].pow === 1) return items[0].t;
+    return { k: "p", items };
+  }
+  const items = [];
+  t.items.forEach(it => {
+    const c = stripOnes(it.t);
+    if (c.k === "s") c.items.forEach(ci => items.push({ sign: ci.sign * it.sign, t: ci.t }));
+    else items.push({ sign: it.sign, t: c });
+  });
+  return { k: "s", items };
+}
+// which of the look-alikes to show: fewest brackets, then × 1 outside brackets, then × 1 as early as possible
+function displayScore(s) {
+  const one = s.search(/× 1(?!\d)/);
+  const before = one < 0 ? "" : s.slice(0, one);
+  const insideBracket = (before.match(/\(/g) || []).length > (before.match(/\)/g) || []).length ? 1 : 0;
+  return [(s.match(/\(/g) || []).length, insideBracket, one < 0 ? 999 : one, s.length];
+}
+function betterDisplay(a, b) {
+  const x = displayScore(a), y = displayScore(b);
+  for (let i = 0; i < x.length; i++) if (x[i] !== y[i]) return x[i] < y[i];
+  return a < b;
+}
+function combineAll(a, b) {
+  const mk = (v, k, items) => ({ v, t: { k, items, val: fracNum(v) } });
+  const out = [
+    mk(frac(a.v.n * b.v.d + b.v.n * a.v.d, a.v.d * b.v.d), "s", termsOf(a.t, 1).concat(termsOf(b.t, 1))),
+    mk(fracSub(a.v, b.v), "s", termsOf(a.t, 1).concat(termsOf(b.t, -1))),
+    mk(fracSub(b.v, a.v), "s", termsOf(b.t, 1).concat(termsOf(a.t, -1))),
+    mk(frac(a.v.n * b.v.n, a.v.d * b.v.d), "p", facsOf(a.t, 1).concat(facsOf(b.t, 1))),
+  ];
+  if (b.v.n !== 0n) out.push(mk(frac(a.v.n * b.v.d, a.v.d * b.v.n), "p", facsOf(a.t, 1).concat(facsOf(b.t, -1))));
+  if (a.v.n !== 0n) out.push(mk(frac(b.v.n * a.v.d, b.v.d * a.v.n), "p", facsOf(b.t, 1).concat(facsOf(a.t, -1))));
+  return out;
+}
+function searchAll(nodes, found) {
+  if (nodes.length === 1) {
+    const v = nodes[0].v;
+    if (v.d === 1n && v.n === 24n) {
+      const t = normalize(nodes[0].t).t;
+      const key = keyOf(stripOnes(t));
+      const s = showOf(t);
+      if (!found.has(key) || betterDisplay(s, found.get(key))) found.set(key, s);
+    }
+    return;
+  }
+  for (let i = 0; i < nodes.length; i++) {
+    for (let j = i + 1; j < nodes.length; j++) {
+      const rest = nodes.filter((_, k) => k !== i && k !== j);
+      for (const c of combineAll(nodes[i], nodes[j])) searchAll(rest.concat([c]), found);
+    }
+  }
+}
+// every distinct way to make 24; answers without ÷ first, then shorter ones
+function solveAll24(nums) {
+  const found = new Map();
+  searchAll(nums.map(x => ({ v: { n: BigInt(x), d: 1n }, t: { k: "n", x, val: x } })), found);
+  const hasDiv = s => (s.includes("÷") ? 1 : 0);
+  return [...found.values()].sort((p, q) => hasDiv(p) - hasDiv(q) || p.length - q.length || (p < q ? -1 : 1));
+}
+
+// draw 4 numbers from 1..maxN that follow the rule AND make 24;
+// rejection sampling keeps every such set equally likely
+function draw4(maxN, allowPair) {
+  for (let i = 0; i < 20000; i++) {
+    const nums = [1, 2, 3, 4].map(() => 1 + randInt(maxN));
+    if (!isAllowed(nums, allowPair)) continue;
+    const answer = solve24(nums);
+    if (answer) return { nums, answer };
+  }
+  return null;
+}
+
+/* ---------- 180 IQ solver ----------
+   5 numbers, each used once; + − × ÷, power, n-th root, factorial, √, Σn, Σ(a→b).
+   Finds the whole-number result closest to the target, preferring the fewest special operators.
+   Limits keep it fast enough for a phone: values within ±1,000,000, factorial 0–10,
+   power/root index up to 20, √ and n-th root only when the result is a whole number,
+   one ! / √ / Σ per number or bracket (no 3!!). Runs in a background worker. */
+// ops (optional) switches the special operators on/off: { pow, root, fact, sum } — all on when left out
+function iqSolve(nums, target, budgetMs, ops) {
+  const LIMIT = 1e6, EPS = 1e-9;
+  const isInt = v => Math.abs(v - Math.round(v)) < EPS;
+  const FACT = [1, 1, 2, 6, 24, 120, 720, 5040, 40320, 362880, 3628800];
+  const use = Object.assign({ pow: true, root: true, fact: true, sum: true }, ops || {});
+  const t0 = Date.now();
+  let full = false, partial = false;
+
+  function unary(node, out) {
+    if (!full || !isInt(node.v)) return;
+    const n = Math.round(node.v);
+    if (use.fact && n >= 3 && n <= 10) out.push({ v: FACT[n], op: "!", a: node, cost: node.cost + 1 });
+    if (use.sum && n >= 2 && n <= 1413) out.push({ v: n * (n + 1) / 2, op: "sig", a: node, cost: node.cost + 1 });
+    if (use.root && n >= 4) { const r = Math.round(Math.sqrt(n)); if (r * r === n) out.push({ v: r, op: "sqrt", a: node, cost: node.cost + 1 }); }
+  }
+  function binary(x, y, out) {
+    const a = x.v, b = y.v, c = x.cost + y.cost;
+    out.push({ v: a + b, op: "+", a: x, b: y, cost: c });
+    out.push({ v: a - b, op: "-", a: x, b: y, cost: c });
+    out.push({ v: b - a, op: "-", a: y, b: x, cost: c });
+    out.push({ v: a * b, op: "*", a: x, b: y, cost: c });
+    if (b !== 0) out.push({ v: a / b, op: "/", a: x, b: y, cost: c });
+    if (a !== 0) out.push({ v: b / a, op: "/", a: y, b: x, cost: c });
+    if (!full) return;
+    for (const [p, q] of [[x, y], [y, x]]) {
+      if (!isInt(q.v)) continue;
+      const k = Math.round(q.v), base = p.v;
+      if (use.pow && k >= -10 && k <= 20 && k !== 0 && k !== 1 && !(base === 0 && k < 0)) {
+        const r = Math.pow(base, k);
+        if (Number.isFinite(r) && Math.abs(r) <= LIMIT) out.push({ v: r, op: "^", a: p, b: q, cost: c + 1 });
+      }
+      if (use.root && k >= 2 && k <= 20 && base > 0) {
+        const r = Math.round(Math.pow(base, 1 / k));
+        if (r >= 1 && Math.abs(Math.pow(r, k) - base) < 1e-6 * Math.max(1, base)) out.push({ v: r, op: "root", a: q, b: p, cost: c + 1 });
+      }
+    }
+    if (use.sum && isInt(a) && isInt(b) && a !== b) {
+      const lo = Math.round(Math.min(a, b)), hi = Math.round(Math.max(a, b));
+      if (hi - lo <= 2000) {
+        const [s, t] = a < b ? [x, y] : [y, x];
+        out.push({ v: (lo + hi) * (hi - lo + 1) / 2, op: "sum", a: s, b: t, cost: c + 1 });
+      }
+    }
+  }
+  // neg = how many steps go below zero; among equal cost, the answer with fewer is easier to read
+  function negOf(node) {
+    if (node.neg === undefined) node.neg = (node.a ? node.a.neg : 0) + (node.b ? node.b.neg : 0) + (node.v < -EPS ? 1 : 0);
+    return node.neg;
+  }
+  function add(map, node) {
+    if (!Number.isFinite(node.v) || Math.abs(node.v) > LIMIT) return;
+    const k = Math.round(node.v * 1e6) / 1e6;
+    const old = map.get(k);
+    if (!old || node.cost < old.cost || (node.cost === old.cost && negOf(node) < negOf(old))) { negOf(node); map.set(k, node); }
+  }
+  function addWithUnary(map, node, u) {
+    add(map, node);
+    u.length = 0; unary(node, u);
+    for (const z of u) add(map, z);
+  }
+
+  function run() {
+    const n = nums.length, all = (1 << n) - 1, sets = new Array(all + 1);
+    const tmp = [], u = [];
+    for (let mask = 1; mask < all; mask++) {
+      const map = new Map();
+      if ((mask & (mask - 1)) === 0) {
+        addWithUnary(map, { v: nums[Math.log2(mask)], op: "n", cost: 0 }, u);
+      } else {
+        for (let sub = (mask - 1) & mask; sub > 0; sub = (sub - 1) & mask) {
+          const rest = mask ^ sub;
+          if (sub < rest) continue;
+          const A = [...sets[sub].values()], B = [...sets[rest].values()];
+          for (const x of A) for (const y of B) {
+            tmp.length = 0; binary(x, y, tmp);
+            for (const r of tmp) addWithUnary(map, r, u);
+          }
+        }
+      }
+      sets[mask] = map;
+    }
+    let best = null;
+    const consider = node => {
+      if (!Number.isFinite(node.v) || !isInt(node.v)) return;
+      const d = Math.abs(Math.round(node.v) - target);
+      if (!best || d < best.d || (d === best.d && (node.cost < best.node.cost ||
+          (node.cost === best.node.cost && negOf(node) < negOf(best.node))))) { negOf(node); best = { d, node }; }
+    };
+    const floor = full ? 1 : 0; // cheapest possible cost in this pass: stop as soon as it is reached exactly
+    let checks = 0;
+    for (let sub = (all - 1) & all; sub > 0; sub = (sub - 1) & all) {
+      const rest = all ^ sub;
+      if (sub < rest) continue;
+      const A = [...sets[sub].values()], B = [...sets[rest].values()];
+      for (const x of A) {
+        for (const y of B) {
+          tmp.length = 0; binary(x, y, tmp);
+          for (const r of tmp) { consider(r); u.length = 0; unary(r, u); u.forEach(consider); }
+        }
+        // exact at the lowest cost: stop, unless it goes below zero and there is still time to look for a tidier one
+        if (best && best.d === 0 && best.node.cost <= floor && (best.node.neg === 0 || Date.now() - t0 > 700)) return best;
+        if (++checks % 64 === 0 && Date.now() - t0 > budgetMs) { partial = true; return best; }
+      }
+    }
+    return best;
+  }
+
+  // pass 1: + − × ÷ only (small and fast); pass 2: everything, only if pass 1 is not exact
+  let best = run();
+  if ((!best || best.d > 0) && (use.pow || use.root || use.fact || use.sum)) {
+    full = true;
+    const b2 = run();
+    if (b2 && (!best || b2.d < best.d)) best = b2;
+  }
+  if (!best) return null;
+
+  // expression → HTML (digits and operators only, so no escaping needed)
+  function fmt(node) {
+    const P = { n: 9, "!": 9, sqrt: 9, sig: 9, sum: 9, "^": 7, root: 7, "*": 2, "/": 2, "+": 1, "-": 1 };
+    const wrap = (child, need) => { const s = fmt(child); return P[child.op] < need ? "(" + s + ")" : s; };
+    switch (node.op) {
+      case "n": return String(node.v);
+      case "+": return fmt(node.a) + " + " + fmt(node.b);
+      case "-": return fmt(node.a) + " − " + wrap(node.b, 2);
+      case "*": return wrap(node.a, 2) + " × " + wrap(node.b, 2);
+      case "/": return wrap(node.a, 2) + " ÷ " + wrap(node.b, 3);
+      case "^": return wrap(node.a, 8) + "<sup>" + fmt(node.b) + "</sup>";
+      case "root": return "<sup>" + fmt(node.a) + "</sup>√" + wrap(node.b, 9);
+      case "sum": return "Σ(" + wrap(node.a, 9) + "→" + wrap(node.b, 9) + ")";
+      case "!": return wrap(node.a, 9) + "!";
+      case "sqrt": return "√" + wrap(node.a, 9);
+      case "sig": return "Σ" + wrap(node.a, 9);
+    }
+    return "?";
+  }
+  return { d: best.d, value: Math.round(best.node.v), html: fmt(best.node), partial, tree: best.node };
+}
+
+function validateMax(raw) {
+  const s = String(raw).trim();
+  if (!/^\d+$/.test(s)) return { ok: false, msg: "ใส่เป็นเลขจำนวนเต็ม 4 ถึง 99" };
+  const n = Number(s);
+  if (n < 4) return { ok: false, msg: "ต้องมีเลขให้สุ่มอย่างน้อย 4 ตัว ใส่ 4 ขึ้นไป" };
+  if (n > 99) return { ok: false, msg: "ใส่ได้สูงสุด 99" };
+  return { ok: true, n };
+}
+
+/* ---------- page ---------- */
+const $ = id => document.getElementById(id);
+const hand = $("hand"), dealBtn = $("dealBtn"), answerBtn = $("answerBtn"), answerEl = $("answer"),
+      optPair = $("optPair"), optRange = $("optRange"), maxNum = $("maxNum"), rangeRow = $("rangeRow"),
+      rangeError = $("rangeError"), nowLine = $("nowLine");
+const startBtn = $("startBtn");
+const KEY = "game24_options_v1";
+let current = null;
+
+function loadOptions() {
+  try {
+    const o = JSON.parse(localStorage.getItem(KEY) || "null");
+    if (o) { optPair.checked = !!o.pair; optRange.checked = !!o.range; if (o.max) maxNum.value = o.max; }
+  } catch (e) {}
+}
+function saveOptions() {
+  try { localStorage.setItem(KEY, JSON.stringify({ pair: optPair.checked, range: optRange.checked, max: maxNum.value })); } catch (e) {}
+}
+
+function currentRule() {
+  if (!optRange.checked) return { ok: true, maxN: 9, allowPair: optPair.checked };
+  const v = validateMax(maxNum.value);
+  return v.ok ? { ok: true, maxN: v.n, allowPair: optPair.checked } : { ok: false, msg: v.msg };
+}
+
+function refreshRules() {
+  maxNum.disabled = !optRange.checked;
+  rangeRow.classList.toggle("off", !optRange.checked);
+  $("baseRule").classList.toggle("off", optPair.checked);
+  const r = currentRule();
+  rangeError.hidden = r.ok;
+  rangeError.textContent = r.ok ? "" : r.msg;
+  maxNum.setAttribute("aria-invalid", r.ok ? "false" : "true");
+  dealBtn.disabled = !r.ok;
+  startBtn.disabled = !r.ok;
+  nowLine.innerHTML = r.ok
+    ? `ตอนนี้: สุ่มจาก <b>1–${r.maxN}</b> · <b>${r.allowPair ? "ซ้ำได้ไม่เกิน 1 คู่" : "ไม่ซ้ำกันเลย"}</b>`
+    : "ตอนนี้: แก้เลขสูงสุดก่อน จึงจะสุ่มได้";
+  saveOptions();
+}
+
+function hideAnswer() {
+  answerEl.hidden = true;
+  answerEl.innerHTML = "";
+  answerBtn.textContent = "ดูเฉลย";
+}
+
+function render(result) {
+  current = result;
+  hideAnswer();
+  hand.innerHTML = "";
+  if (!result) {
+    answerEl.hidden = false;
+    answerEl.className = "answer none";
+    answerEl.textContent = "สุ่มหลายรอบแล้วยังไม่เจอชุดที่ทำ 24 ได้ ลองกดสุ่มใหม่ หรือลดเลขสูงสุด";
+    answerBtn.disabled = true;
+    return;
+  }
+  answerBtn.disabled = false;
+  dealCards(hand, result.nums);
+}
+
+function dealCards(container, nums) {
+  container.innerHTML = "";
+  nums.forEach(x => {
+    const el = document.createElement("div");
+    el.className = "card deal";
+    el.innerHTML = `<span class="num">${x}</span>`;
+    container.appendChild(el);
+  });
+  container.setAttribute("aria-label", "เลขที่ได้ " + nums.join(" "));
+}
+
+function toggleAnswer() {
+  if (!current) return;
+  if (answerEl.hidden) {
+    if (!current.all) current.all = solveAll24(current.nums);
+    answerEl.className = "answer";
+    answerEl.innerHTML = `<span class="count">ทำได้ ${current.all.length} แบบ</span><ol>` +
+      current.all.map(s => `<li>${s} = 24</li>`).join("") + "</ol>";
+    answerEl.hidden = false;
+    answerBtn.textContent = "ซ่อนเฉลย";
+  } else {
+    hideAnswer();
+  }
+}
+
+function deal() {
+  const r = currentRule();
+  if (!r.ok) return;
+  render(draw4(r.maxN, r.allowPair));
+}
+
+/* ---------- screens ---------- */
+const screens = { home: $("scrHome"), basic: $("scrBasic"), time: $("scrTime"), iq: $("scrIQ"), calc: $("scrCalc") };
+const rulesPanel = $("rulesPanel");
+let screen = "home";
+
+function show(name) {
+  if (name !== "time") stopRun(false);
+  screen = name;
+  for (const k in screens) screens[k].hidden = k !== name;
+  rulesPanel.hidden = name !== "basic" && name !== "time";
+  if (name === "calc") calcOpen();
+  if (name === "iq" && !iq.nums) iqDeal();
+  if (name === "basic") $("basicRulesSlot").appendChild(rulesPanel);
+  if (name === "time") { $("timeRulesSlot").appendChild(rulesPanel); showTimeState("setup"); }
+  window.scrollTo(0, 0);
+}
+
+/* ---------- time challenge ---------- */
+const BEST_KEY = "game24_best_v1";
+const tStates = { setup: $("tSetup"), run: $("tRun"), end: $("tEnd") };
+const clock = $("clock"), tally = $("tally"), tHand = $("tHand"),
+      skipBtn = $("skipBtn"), doneBtn = $("doneBtn");
+let minutes = 2;
+let run = null; // { endAt, done, skip, timer }
+let tapLock = false;
+let wakeLock = null;
+
+// kept in memory too, so the best score still works for this visit when the browser blocks storage
+let bestMem = {};
+function readBest() {
+  try { const saved = JSON.parse(localStorage.getItem(BEST_KEY) || "null"); if (saved) bestMem = saved; } catch (e) {}
+  return { ...bestMem };
+}
+function writeBest(best) {
+  bestMem = { ...best };
+  try { localStorage.setItem(BEST_KEY, JSON.stringify(best)); } catch (e) {}
+}
+
+function showTimeState(name) {
+  for (const k in tStates) tStates[k].hidden = k !== name;
+  $("timeTopbar").hidden = name === "run";
+  if (name === "setup") refreshSetup();
+}
+
+function refreshSetup() {
+  document.querySelectorAll("#minSeg button").forEach(b =>
+    b.setAttribute("aria-pressed", String(Number(b.dataset.min) === minutes)));
+  const best = readBest()[minutes];
+  $("bestLine").innerHTML = best != null
+    ? `คะแนนสูงสุด (${minutes} นาที): <b>${best}</b> ข้อ`
+    : `ยังไม่มีคะแนนสูงสุดของ ${minutes} นาที`;
+  try { localStorage.setItem("game24_minutes_v1", String(minutes)); } catch (e) {}
+}
+
+async function keepAwake() {
+  try { if (navigator.wakeLock && !wakeLock) wakeLock = await navigator.wakeLock.request("screen"); } catch (e) { wakeLock = null; }
+}
+function releaseAwake() {
+  try { if (wakeLock) wakeLock.release(); } catch (e) {}
+  wakeLock = null;
+}
+
+function nextProblem() {
+  const r = currentRule();
+  const res = draw4(r.maxN, r.allowPair);
+  if (res) dealCards(tHand, res.nums);
+}
+
+function remainingMs() { return run ? run.endAt - Date.now() : 0; }
+
+function tick() {
+  if (!run) return;
+  const ms = remainingMs();
+  if (ms <= 0) { finishRun(true); return; }
+  const s = Math.ceil(ms / 1000);
+  clock.textContent = Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+  clock.classList.toggle("warn", s <= 10);
+}
+
+function updateTally() { tally.textContent = `Done ${run.done} · Skip ${run.skip}`; }
+
+function startRun() {
+  if (!currentRule().ok) return;
+  run = { endAt: Date.now() + minutes * 60000, done: 0, skip: 0, timer: null };
+  updateTally();
+  nextProblem();
+  showTimeState("run");
+  tick();
+  run.timer = setInterval(tick, 200);
+  keepAwake();
+}
+
+function answer(kind) {
+  if (!run || tapLock) return;
+  if (remainingMs() <= 0) { finishRun(true); return; }
+  run[kind]++;
+  updateTally();
+  nextProblem();
+  tapLock = true; // ignore a second tap within 0.3 s (no visual change, so the buttons don't flicker)
+  setTimeout(() => { tapLock = false; }, 300);
+}
+
+// stop the clock; with showSummary it records the score and shows the result screen
+function stopRun(showSummary, timeUp) {
+  if (!run) return;
+  clearInterval(run.timer);
+  releaseAwake();
+  const { done, skip } = run;
+  run = null;
+  tapLock = false;
+  if (!showSummary) return;
+  const best = readBest();
+  if (best[minutes] == null || done > best[minutes]) { best[minutes] = done; writeBest(best); }
+  $("endTitle").textContent = timeUp ? "หมดเวลา" : "หยุดแล้ว";
+  $("sumDone").textContent = done;
+  $("sumSkip").textContent = skip;
+  $("sumBestLabel").textContent = `คะแนนสูงสุด (${minutes} นาที)`;
+  $("sumBest").textContent = best[minutes];
+  showTimeState("end");
+}
+function finishRun(timeUp) { stopRun(true, timeUp); }
+
+/* ---------- 180 IQ basic play ---------- */
+const iqAnswerEl = $("iqAnswer"), iqAnswerBtn = $("iqAnswerBtn");
+const iq = { nums: null, target: 0, digits: 2, job: 0, result: null, open: false, worker: null };
+
+// the 180 IQ solver runs in a background worker so the page never freezes; main thread is the fallback.
+// slot remembers the running worker so a newer request can cancel the old one.
+function solveIQInBackground(slot, nums, target, done, ops) {
+  if (slot.worker) { slot.worker.terminate(); slot.worker = null; }
+  try {
+    const src = iqSolve.toString() +
+      "\nonmessage = e => postMessage(iqSolve(e.data.nums, e.data.target, e.data.budget, e.data.ops));";
+    const w = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+    w.onmessage = e => { done(e.data); w.terminate(); if (slot.worker === w) slot.worker = null; };
+    w.onerror = e => { e.preventDefault(); w.terminate(); if (slot.worker === w) slot.worker = null; setTimeout(() => done(iqSolve(nums, target, 3000, ops)), 30); };
+    slot.worker = w;
+    w.postMessage({ nums, target, budget: 6000, ops });
+  } catch (err) {
+    setTimeout(() => done(iqSolve(nums, target, 3000, ops)), 30);
+  }
+}
+
+function iqStartSolve(job, nums, target) {
+  solveIQInBackground(iq, nums, target, res => {
+    if (job === iq.job) { iq.result = res || { none: true }; iqShowAnswer(); }
+  });
+}
+
+// HTML for a 180 IQ result (shared by basic play and the calculator)
+function iqResultHtml(r, t) {
+  if (!r) return `<span class="note">กำลังหาวิธี…</span>`;
+  if (r.none) return `<span class="note">หาวิธีไม่สำเร็จ ลองใหม่อีกครั้ง</span>`;
+  let html = r.d === 0
+    ? `<span class="note">ได้ ${t} พอดี</span><span class="expr">${r.html} = ${r.value}</span>`
+    : `<span class="note">ไม่มีวิธีได้ ${t} พอดี · ใกล้สุดคือ <b>${r.value}</b> (ห่าง ${r.d})</span>` +
+      `<span class="expr">${r.html} = ${r.value}</span>`;
+  if (r.partial) html += `<span class="note">หาไม่ทันครบทุกวิธี อาจมีวิธีที่ใกล้กว่านี้</span>`;
+  return html;
+}
+
+function iqDeal() {
+  let nums;
+  do { nums = [0, 0, 0, 0, 0].map(() => 1 + randInt(9)); } while (!isAllowed(nums, true));
+  iq.nums = nums;
+  iq.target = iq.digits === 2 ? 10 + randInt(90) : 100 + randInt(900);
+  iq.result = null;
+  iq.job++;
+  iqHide();
+  dealCards($("iqHand"), nums);
+  $("iqTarget").textContent = iq.target;
+  iqStartSolve(iq.job, nums.slice(), iq.target);
+}
+
+function iqHide() {
+  iq.open = false;
+  iqAnswerEl.hidden = true;
+  iqAnswerEl.innerHTML = "";
+  iqAnswerBtn.textContent = "ดูเฉลย";
+}
+
+function iqShowAnswer() {
+  if (!iq.open) return;
+  iqAnswerEl.className = "answer";
+  iqAnswerEl.innerHTML = iqResultHtml(iq.result, iq.target);
+  iqAnswerEl.hidden = false;
+}
+
+function iqToggleAnswer() {
+  if (iq.open) { iqHide(); return; }
+  iq.open = true;
+  iqAnswerBtn.textContent = "ซ่อนเฉลย";
+  iqShowAnswer();
+}
+
+function iqSetDigits(d) {
+  iq.digits = d;
+  document.querySelectorAll("#digitSeg button").forEach(b =>
+    b.setAttribute("aria-pressed", String(Number(b.dataset.digits) === d)));
+  try { localStorage.setItem("game24_iq_digits_v1", String(d)); } catch (e) {}
+}
+
+/* ---------- solver: type the numbers, the page finds the way ---------- */
+const calcInputs = [0, 1, 2, 3, 4].map(i => $("calcN" + i));
+const calcTarget = $("calcTarget"), calcAnswerEl = $("calcAnswer"), calcError = $("calcError");
+const calc = {
+  game: "24", job: 0, worker: null,
+  // what is in the boxes for each game; starts empty
+  values: { "24": { nums: [], target: "" }, "180": { nums: [], target: "" } },
+};
+
+function calcCount() { return calc.game === "24" ? 4 : 5; }
+
+function calcFill() {
+  const v = calc.values[calc.game], n = calcCount();
+  calcInputs.forEach((el, i) => { el.hidden = i >= n; el.value = i < n ? (v.nums[i] || "") : ""; el.setAttribute("aria-invalid", "false"); });
+  $("calcNums").classList.toggle("four", n === 4);
+  $("calcTargetField").hidden = calc.game === "24";
+  $("calcOpsField").hidden = calc.game === "24";
+  calcTarget.value = v.target;
+  calcTarget.setAttribute("aria-invalid", "false");
+  calcError.hidden = true;
+  document.querySelectorAll("#calcGameSeg button").forEach(b =>
+    b.setAttribute("aria-pressed", String(b.dataset.game === calc.game)));
+  $("calcRules").textContent = calc.game === "24"
+    ? "ใช้เลขครบ 4 ตัว ตัวละครั้ง · + − × ÷ · แสดงทุกแบบที่ทำ 24 ได้"
+    : "ใช้เลขครบ 5 ตัว ตัวละครั้ง · ใช้เฉพาะเครื่องหมายที่ติ๊ก · คำตอบเป็นจำนวนเต็ม · แสดง 1 วิธี (พอดี หรือใกล้สุด)";
+}
+
+function calcSave() {
+  const v = calc.values[calc.game];
+  v.nums = calcInputs.slice(0, calcCount()).map(el => el.value.trim());
+  v.target = calcTarget.value.trim();
+}
+
+function calcHideAnswer() {
+  calc.job++;
+  if (calc.worker) { calc.worker.terminate(); calc.worker = null; }
+  calcAnswerEl.hidden = true;
+  calcAnswerEl.innerHTML = "";
+}
+
+// returns { nums, target } or null after marking the wrong boxes
+function calcRead() {
+  const n = calcCount(), bad = [], nums = [];
+  calcInputs.slice(0, n).forEach((el, i) => {
+    const s = el.value.trim();
+    const ok = /^\d{1,2}$/.test(s);
+    el.setAttribute("aria-invalid", ok ? "false" : "true");
+    if (ok) nums.push(Number(s)); else bad.push(i + 1);
+  });
+  let target = 24, targetBad = false;
+  if (calc.game === "180") {
+    const s = calcTarget.value.trim();
+    targetBad = !/^\d{1,3}$/.test(s) || Number(s) < 1;
+    calcTarget.setAttribute("aria-invalid", targetBad ? "true" : "false");
+    target = Number(s);
+  }
+  const msgs = [];
+  if (bad.length) msgs.push(`ช่องที่ ${bad.join(", ")} ต้องเป็นจำนวนเต็ม 0–99`);
+  if (targetBad) msgs.push("คำตอบต้องเป็นจำนวนเต็ม 1–999");
+  calcError.hidden = msgs.length === 0;
+  calcError.textContent = msgs.join(" · ");
+  return msgs.length ? null : { nums, target };
+}
+
+function calcRun() {
+  calcSave();
+  calcHideAnswer();
+  const input = calcRead();
+  if (!input) return;
+  calcAnswerEl.className = "answer";
+  calcAnswerEl.hidden = false;
+  if (calc.game === "24") {
+    const all = solveAll24(input.nums);
+    if (!all.length) {
+      calcAnswerEl.className = "answer none";
+      calcAnswerEl.textContent = `${input.nums.join(" ")} ทำ 24 ไม่ได้`;
+    } else {
+      calcAnswerEl.innerHTML = `<span class="count">${input.nums.join(" ")} ทำได้ ${all.length} แบบ</span><ol>` +
+        all.map(s => `<li>${s} = 24</li>`).join("") + "</ol>";
+    }
+    return;
+  }
+  const job = calc.job;
+  calcAnswerEl.innerHTML = iqResultHtml(null, input.target);
+  solveIQInBackground(calc, input.nums, input.target, res => {
+    if (job !== calc.job) return;
+    calcAnswerEl.innerHTML = iqResultHtml(res || { none: true }, input.target);
+  }, calcOps());
+}
+
+function calcSetGame(g) {
+  if (g === calc.game) return;
+  calcSave();
+  calcHideAnswer();
+  calc.game = g;
+  try { localStorage.setItem("game24_calc_game_v1", g); } catch (e) {}
+  calcFill();
+}
+
+function calcOpen() {
+  calcFill();
+}
+
+calcInputs.concat([calcTarget]).forEach(el => el.addEventListener("input", () => {
+  el.value = el.value.replace(/\D/g, "");
+  el.setAttribute("aria-invalid", "false");
+  calcSave();
+}));
+$("calcForm").addEventListener("submit", e => { e.preventDefault(); calcRun(); });
+$("calcClear").addEventListener("click", () => {
+  calcHideAnswer();
+  calc.values[calc.game] = { nums: [], target: "" };
+  calcFill();
+  calcInputs[0].focus();
+});
+document.querySelectorAll("#calcGameSeg button").forEach(b =>
+  b.addEventListener("click", () => calcSetGame(b.dataset.game)));
+
+// which special operators the 180 IQ solver may use (+ − × ÷ are always allowed)
+const OP_BOXES = { fact: "opFact", sum: "opSum", pow: "opPow", root: "opRoot" };
+function calcOps() {
+  const ops = {};
+  for (const k in OP_BOXES) ops[k] = $(OP_BOXES[k]).checked;
+  return ops;
+}
+for (const k in OP_BOXES) {
+  $(OP_BOXES[k]).addEventListener("change", () => {
+    calcHideAnswer(); // the old answer may use an operator that is now off
+    try { localStorage.setItem("game24_calc_ops_v1", JSON.stringify(calcOps())); } catch (e) {}
+  });
+}
+try {
+  const saved = JSON.parse(localStorage.getItem("game24_calc_ops_v1") || "null");
+  if (saved) for (const k in OP_BOXES) if (typeof saved[k] === "boolean") $(OP_BOXES[k]).checked = saved[k];
+} catch (e) {}
+try { const g = localStorage.getItem("game24_calc_game_v1"); if (g === "180") calc.game = "180"; } catch (e) {}
+
+/* ---------- wiring ---------- */
+$("goCalc").addEventListener("click", () => show("calc"));
+$("goIQ").addEventListener("click", () => show("iq"));
+$("iqDealBtn").addEventListener("click", iqDeal);
+iqAnswerBtn.addEventListener("click", iqToggleAnswer);
+document.querySelectorAll("#digitSeg button").forEach(b =>
+  b.addEventListener("click", () => { const d = Number(b.dataset.digits); if (d !== iq.digits) { iqSetDigits(d); iqDeal(); } }));
+optPair.addEventListener("change", refreshRules);
+optRange.addEventListener("change", refreshRules);
+maxNum.addEventListener("input", refreshRules);
+dealBtn.addEventListener("click", deal);
+answerBtn.addEventListener("click", toggleAnswer);
+$("goBasic").addEventListener("click", () => show("basic"));
+$("goTime").addEventListener("click", () => show("time"));
+document.querySelectorAll("[data-home]").forEach(b => b.addEventListener("click", () => show("home")));
+document.querySelectorAll("#minSeg button").forEach(b =>
+  b.addEventListener("click", () => { minutes = Number(b.dataset.min); refreshSetup(); }));
+startBtn.addEventListener("click", startRun);
+skipBtn.addEventListener("click", () => answer("skip"));
+doneBtn.addEventListener("click", () => answer("done"));
+$("stopBtn").addEventListener("click", () => finishRun(false));
+$("againBtn").addEventListener("click", () => showTimeState("setup"));
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible" && run) { tick(); keepAwake(); }
+});
+document.addEventListener("keydown", e => {
+  if (screen !== "basic" && screen !== "iq") return;
+  if (e.target.tagName === "INPUT" || e.target.tagName === "BUTTON") return;
+  if (e.key === " " || e.key === "Enter") { e.preventDefault(); screen === "iq" ? iqDeal() : deal(); }
+});
+
+loadOptions();
+try { const m = Number(localStorage.getItem("game24_minutes_v1")); if (m >= 1 && m <= 5) minutes = m; } catch (e) {}
+refreshRules();
+render(draw4(currentRule().ok ? currentRule().maxN : 9, optPair.checked));
+try { const d = Number(localStorage.getItem("game24_iq_digits_v1")); iqSetDigits(d === 3 ? 3 : 2); } catch (e) { iqSetDigits(2); }
+show("home");
+</script>
+
+</body>
+</html>
